@@ -15,31 +15,36 @@ import org.eclipse.microprofile.graphql.Source;
 
 import java.util.List;
 
+import static io.quarkus.hibernate.reactive.panache.Panache.withTransaction;
+
 @GraphQLApi
 public class ActorResource {
 
     @Query("allActors")
     @Description("Get all Actors")
     public Uni<List<ActorDTO>> getAllActors() {
-        return Actor.getAllActors()
-                .onItem().transform(ActorDTO::from);
+        return withTransaction(() -> Actor.getAllActors()
+                .onItem().transform(ActorDTO::from));
     }
 
     @Query
     @Description("Get an actor")
     public Uni<ActorDTO> getActor(@Name("actorId") long id) {
-        return Actor.findByActorId(id).onItem().transform(ActorDTO::from);
+        return withTransaction(() ->
+                Actor.findByActorId(id).onItem().transform(ActorDTO::from));
     }
 
     public Uni<List<MovieDTO>> movies(@Source(name = "ActorResponse") ActorDTO actor) {
-        return ActorMovieEntity.getMoviesByActorQuery(actor.id).onItem().transform(actorMovieEntity ->
-                actorMovieEntity.movie).collect().asList().onItem().transform(MovieDTO::from);
+        return withTransaction(() ->
+                ActorMovieEntity.getMoviesByActorQuery(actor.id).onItem().transform(actorMovieEntity ->
+                actorMovieEntity.movie).collect().asList().onItem().transform(MovieDTO::from));
     }
 
     @Mutation
     @Description("Add movie to actor")
     public Uni<ActorDTO> addMovieToActor(@Name("movieId") long movieId, @Name("actorId") long actorId) {
-        return Actor.addMovieToActor(movieId, actorId).onItem().transform(ActorDTO::from).onFailure().
-                transform(throwable -> new AlreadyExistingException("movieId: " + movieId + " and actorId: " + actorId));
+        return withTransaction(() ->
+                Actor.addMovieToActor(movieId, actorId).onItem().transform(ActorDTO::from).onFailure().
+                transform(throwable -> new AlreadyExistingException("movieId: " + movieId + " and actorId: " + actorId)));
     }
 }
